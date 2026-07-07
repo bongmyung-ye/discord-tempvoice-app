@@ -1,41 +1,59 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { env } from "./config/env.js";
 import { handleInteraction } from "./interactions/handleInteraction.js";
+import { logger } from "./utils/logger.js";
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMembers,
-  ],
-});
+function createClient() {
+  return new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildMembers,
+    ],
+  });
+}
 
-client.once("ready", (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}`);
-});
+async function bootstrap() {
+  const client = createClient();
 
-client.on("interactionCreate", async (interaction) => {
-  try {
-    await handleInteraction(interaction);
-  } catch (error) {
-    console.error(error);
+  client.once("ready", (readyClient) => {
+    logger.info(`Logged in as ${readyClient.user.tag}`);
+    logger.info(`Serving ${readyClient.guilds.cache.size} guild(s).`);
+  });
 
-    if (!interaction.isRepliable()) {
-      return;
+  client.on("interactionCreate", async (interaction) => {
+    try {
+      await handleInteraction(interaction);
+    } catch (error) {
+      logger.error("Failed to handle interaction.", error);
+
+      if (!interaction.isRepliable()) {
+        return;
+      }
+
+      const payload = {
+        ephemeral: true,
+        content: "요청을 처리하는 중 문제가 발생했습니다.",
+      };
+
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(payload);
+        return;
+      }
+
+      await interaction.reply(payload);
     }
+  });
 
-    const payload = {
-      ephemeral: true,
-      content: "요청을 처리하는 중 문제가 발생했습니다.",
-    };
+  process.on("unhandledRejection", (error) => {
+    logger.error("Unhandled promise rejection.", error);
+  });
 
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp(payload);
-      return;
-    }
+  process.on("uncaughtException", (error) => {
+    logger.error("Uncaught exception.", error);
+  });
 
-    await interaction.reply(payload);
-  }
-});
+  await client.login(env.DISCORD_TOKEN);
+}
 
-await client.login(env.DISCORD_TOKEN);
+await bootstrap();
