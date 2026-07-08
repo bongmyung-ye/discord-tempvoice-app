@@ -16,6 +16,14 @@ export const tempVoiceCustomId = {
   delete: "tempvoice:delete",
 } as const;
 
+export const tempVoiceModalCustomId = {
+  rename: "tempvoice:modal:rename",
+} as const;
+
+export const tempVoiceTextInputCustomId = {
+  channelName: "tempvoice:input:channel-name",
+} as const;
+
 export type TempVoiceAction =
   (typeof tempVoiceCustomId)[keyof typeof tempVoiceCustomId];
 

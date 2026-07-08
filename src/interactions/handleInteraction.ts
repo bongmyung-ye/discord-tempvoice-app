@@ -4,6 +4,7 @@ import {
   tempVoiceCustomId,
 } from "../components/tempvoice/customIds.js";
 import { handleTempVoiceButton } from "./tempvoice-buttons.js";
+import { handleTempVoiceModal } from "./tempvoice-modals.js";
 import { handleTempVoicePanelCommand } from "../commands/tempvoice-panel.js";
 
 const tempVoiceActionSet = new Set<string>(Object.values(tempVoiceCustomId));
@@ -17,13 +18,16 @@ export async function handleInteraction(interaction: Interaction) {
     return;
   }
 
-  if (!interaction.isButton()) {
+  if (interaction.isButton()) {
+    if (!tempVoiceActionSet.has(interaction.customId)) {
+      return;
+    }
+
+    await handleTempVoiceButton(interaction, interaction.customId as TempVoiceAction);
     return;
   }
 
-  if (!tempVoiceActionSet.has(interaction.customId)) {
-    return;
+  if (interaction.isModalSubmit()) {
+    await handleTempVoiceModal(interaction);
   }
-
-  await handleTempVoiceButton(interaction, interaction.customId as TempVoiceAction);
 }
