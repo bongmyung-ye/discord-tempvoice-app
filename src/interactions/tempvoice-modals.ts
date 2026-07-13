@@ -2,6 +2,7 @@ import {
     ChannelType,
     GuildMember,
     ModalSubmitInteraction,
+    VoiceChannel,
 } from "discord.js";
 import {
     tempVoiceModalCustomId,
@@ -21,7 +22,9 @@ async function getGuildMember(interaction: ModalSubmitInteraction) {
     return interaction.guild.members.fetch(interaction.user.id);
 }
 
-async function handleRenameModal(interaction: ModalSubmitInteraction) {
+async function getManageableVoiceChannel(
+    interaction: ModalSubmitInteraction,
+): Promise<VoiceChannel | null> {
     const member = await getGuildMember(interaction);
 
     if (!member) {
@@ -29,7 +32,7 @@ async function handleRenameModal(interaction: ModalSubmitInteraction) {
             ephemeral: true,
             content: "서버 안에서만 사용할 수 있는 기능입니다.",
         });
-        return;
+        return null;
     }
 
     const channel = member.voice.channel;
@@ -37,9 +40,9 @@ async function handleRenameModal(interaction: ModalSubmitInteraction) {
     if (!channel || channel.type !== ChannelType.GuildVoice) {
         await interaction.reply({
             ephemeral: true,
-            content: "먼저 이름을 변경할 음성 채널에 들어가 주세요.",
+            content: "먼저 관리할 음성 채널에 들어가 주세요.",
         });
-        return;
+        return null;
     }
 
     if (!tempVoiceService.canManageChannel(member, channel)) {
@@ -47,6 +50,16 @@ async function handleRenameModal(interaction: ModalSubmitInteraction) {
             ephemeral: true,
             content: "이 음성 채널을 관리할 수 있는 상태가 아닙니다.",
         });
+        return null;
+    }
+
+    return channel;
+}
+
+async function handleRenameModal(interaction: ModalSubmitInteraction) {
+    const channel = await getManageableVoiceChannel(interaction);
+
+    if (!channel) {
         return;
     }
 
@@ -70,9 +83,48 @@ async function handleRenameModal(interaction: ModalSubmitInteraction) {
     });
 }
 
-export async function handleTempVoiceModal(interaction: ModalSubmitInteraction) {
+async function handleUserLimitModal(interaction: ModalSubmitInteraction) {
+    const channel = await getManageableVoiceChannel(interaction);
+
+    if (!channel) {
+        return;
+    }
+
+    const rawLimit = interaction.fields
+        .getTextInputValue(tempVoiceTextInputCustomId.userLimit)
+        .trim();
+
+    if (!/^\d{1,2}$/.test(rawLimit)) {
+        await interaction.reply({
+            ephemeral: true,
+            content: "인원 제한은 0부터 99까지의 숫자로 입력해 주세요.",
+        });
+        return;
+    }
+
+    const limit = Number(rawLimit);
+
+    await tempVoiceService.setUserLimit(channel, limit);
+
+    await interaction.reply({
+        ephemeral: true,
+        content:
+            limit === 0
+                ? "음성 채널 인원 제한을 해제했습니다."
+                : `음성 채널 인원 제한을 ${limit}명으로 설정했습니다.`,
+    });
+}
+
+export async function handleTempVoiceModal(
+    interaction: ModalSubmitInteraction,
+) {
     if (interaction.customId === tempVoiceModalCustomId.rename) {
         await handleRenameModal(interaction);
+        return true;
+    }
+
+    if (interaction.customId === tempVoiceModalCustomId.limit) {
+        await handleUserLimitModal(interaction);
         return true;
     }
 

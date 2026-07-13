@@ -18,10 +18,12 @@ export const tempVoiceCustomId = {
 
 export const tempVoiceModalCustomId = {
   rename: "tempvoice:modal:rename",
+  limit: "tempvoice:modal:limit",
 } as const;
 
 export const tempVoiceTextInputCustomId = {
   channelName: "tempvoice:input:channel-name",
+  userLimit: "tempvoice:input:user-limit",
 } as const;
 
 export type TempVoiceAction =
