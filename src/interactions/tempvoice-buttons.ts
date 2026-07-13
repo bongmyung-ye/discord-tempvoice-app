@@ -16,8 +16,8 @@ import {
 function createRenameChannelModal() {
   const channelNameInput = new TextInputBuilder()
     .setCustomId(tempVoiceTextInputCustomId.channelName)
-    .setLabel("New channel name")
-    .setPlaceholder("Enter a new voice channel name")
+    .setLabel("새 채널 이름")
+    .setPlaceholder("변경할 음성 채널 이름을 입력해 주세요.")
     .setMinLength(1)
     .setMaxLength(100)
     .setRequired(true)
@@ -25,9 +25,27 @@ function createRenameChannelModal() {
 
   return new ModalBuilder()
     .setCustomId(tempVoiceModalCustomId.rename)
-    .setTitle("Rename voice channel")
+    .setTitle("음성 채널 이름 변경")
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(channelNameInput),
+    );
+}
+
+function createUserLimitModal() {
+  const userLimitInput = new TextInputBuilder()
+    .setCustomId(tempVoiceTextInputCustomId.userLimit)
+    .setLabel("인원 제한")
+    .setPlaceholder("0부터 99까지 입력해 주세요. 0은 제한 없음입니다.")
+    .setMinLength(1)
+    .setMaxLength(2)
+    .setRequired(true)
+    .setStyle(TextInputStyle.Short);
+
+  return new ModalBuilder()
+    .setCustomId(tempVoiceModalCustomId.limit)
+    .setTitle("음성 채널 인원 제한 설정")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(userLimitInput),
     );
 }
 
@@ -40,10 +58,15 @@ export async function handleTempVoiceButton(
     return;
   }
 
+  if (action === tempVoiceCustomId.limit) {
+    await interaction.showModal(createUserLimitModal());
+    return;
+  }
+
   const label = tempVoiceActionLabels[action];
 
   await interaction.reply({
     ephemeral: true,
-    content: `\`${label}\` 기능은 다음 작업에서 연결할 예정입니다.`,
+    content: `\`${label}\` 기능은 아직 사용할 수 없습니다.`,
   });
 }
