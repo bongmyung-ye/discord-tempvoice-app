@@ -1,4 +1,8 @@
-import { GuildMember, VoiceChannel } from "discord.js";
+import {
+  GuildMember,
+  PermissionFlagsBits,
+  VoiceChannel,
+} from "discord.js";
 
 export class TempVoiceService {
   canManageChannel(member: GuildMember, channel: VoiceChannel) {
@@ -18,6 +22,41 @@ export class TempVoiceService {
   async setUserLimit(channel: VoiceChannel, limit: number) {
     const safeLimit = Math.max(0, Math.min(limit, 99));
     await channel.setUserLimit(safeLimit);
+  }
+
+  async togglePrivacy(channel: VoiceChannel, member: GuildMember) {
+    const everyoneRole = channel.guild.roles.everyone;
+    const everyoneOverwrite =
+      channel.permissionOverwrites.cache.get(everyoneRole.id);
+
+    const isPrivate =
+      everyoneOverwrite?.deny.has(PermissionFlagsBits.Connect) ?? false;
+
+    if (isPrivate) {
+      await Promise.all([
+        channel.permissionOverwrites.edit(everyoneRole, {
+          Connect: null,
+        }),
+        channel.permissionOverwrites.edit(member, {
+          ViewChannel: null,
+          Connect: null,
+        }),
+      ]);
+
+      return false;
+    }
+
+    await Promise.all([
+      channel.permissionOverwrites.edit(everyoneRole, {
+        Connect: false,
+      }),
+      channel.permissionOverwrites.edit(member, {
+        ViewChannel: true,
+        Connect: true,
+      }),
+    ]);
+
+    return true;
   }
 }
 

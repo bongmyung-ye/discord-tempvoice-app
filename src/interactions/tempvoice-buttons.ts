@@ -1,6 +1,7 @@
 import {
   ActionRowBuilder,
   ButtonInteraction,
+  ChannelType,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -12,6 +13,7 @@ import {
   tempVoiceModalCustomId,
   tempVoiceTextInputCustomId,
 } from "../components/tempvoice/customIds.js";
+import { tempVoiceService } from "../services/tempvoice.service.js";
 
 function createRenameChannelModal() {
   const channelNameInput = new TextInputBuilder()
@@ -49,6 +51,62 @@ function createUserLimitModal() {
     );
 }
 
+async function getManageableVoiceChannel(interaction: ButtonInteraction) {
+  if (!interaction.inCachedGuild()) {
+    await interaction.reply({
+      ephemeral: true,
+      content: "서버 안에서만 사용할 수 있는 기능입니다.",
+    });
+    return null;
+  }
+
+  const channel = interaction.member.voice.channel;
+
+  if (!channel || channel.type !== ChannelType.GuildVoice) {
+    await interaction.reply({
+      ephemeral: true,
+      content: "먼저 관리할 음성 채널에 들어가 주세요.",
+    });
+    return null;
+  }
+
+  if (!tempVoiceService.canManageChannel(interaction.member, channel)) {
+    await interaction.reply({
+      ephemeral: true,
+      content: "이 음성 채널을 관리할 수 있는 상태가 아닙니다.",
+    });
+    return null;
+  }
+
+  return {
+    member: interaction.member,
+    channel,
+  };
+}
+
+async function handlePrivacyToggle(interaction: ButtonInteraction) {
+  const context = await getManageableVoiceChannel(interaction);
+
+  if (!context) {
+    return;
+  }
+
+  await interaction.deferReply({
+    ephemeral: true,
+  });
+
+  const isPrivate = await tempVoiceService.togglePrivacy(
+    context.channel,
+    context.member,
+  );
+
+  await interaction.editReply({
+    content: isPrivate
+      ? "음성 채널을 비공개로 전환했습니다."
+      : "음성 채널을 다시 공개했습니다.",
+  });
+}
+
 export async function handleTempVoiceButton(
   interaction: ButtonInteraction,
   action: TempVoiceAction,
@@ -60,6 +118,11 @@ export async function handleTempVoiceButton(
 
   if (action === tempVoiceCustomId.limit) {
     await interaction.showModal(createUserLimitModal());
+    return;
+  }
+
+  if (action === tempVoiceCustomId.privacy) {
+    await handlePrivacyToggle(interaction);
     return;
   }
 
