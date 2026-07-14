@@ -6,7 +6,27 @@ import {
 
 export class TempVoiceService {
   canManageChannel(member: GuildMember, channel: VoiceChannel) {
-    return channel.members.has(member.id);
+    if (!channel.members.has(member.id)) {
+      return false;
+    }
+
+    if (member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return true;
+    }
+
+    const memberOverwrite = channel.permissionOverwrites.cache.get(member.id);
+
+    return (
+      memberOverwrite?.allow.has(PermissionFlagsBits.ManageChannels) ?? false
+    );
+  }
+
+  async assignChannelOwner(channel: VoiceChannel, member: GuildMember) {
+    await channel.permissionOverwrites.edit(member, {
+      ViewChannel: true,
+      Connect: true,
+      ManageChannels: true,
+    });
   }
 
   async renameChannel(channel: VoiceChannel, name: string) {

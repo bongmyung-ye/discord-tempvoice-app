@@ -48,7 +48,7 @@ async function getManageableVoiceChannel(
     if (!tempVoiceService.canManageChannel(member, channel)) {
         await interaction.reply({
             ephemeral: true,
-            content: "이 음성 채널을 관리할 수 있는 상태가 아닙니다.",
+            content: "이 음성 채널을 관리할 권한이 없습니다.",
         });
         return null;
     }
