@@ -10,6 +10,13 @@ export type ChannelClaimResult =
   | "already-owner"
   | "owner-present";
 
+export type ChannelTransferResult =
+  | "transferred"
+  | "same-member"
+  | "target-is-bot"
+  | "target-not-in-channel"
+  | "not-allowed";
+
 export class TempVoiceService {
   canManageChannel(member: GuildMember, channel: VoiceChannel) {
     if (!channel.members.has(member.id)) {
@@ -45,6 +52,12 @@ export class TempVoiceService {
     });
   }
 
+  async removeChannelOwner(channel: VoiceChannel, memberId: string) {
+    await channel.permissionOverwrites.edit(memberId, {
+      ManageChannels: null,
+    });
+  }
+
   async claimChannel(
     channel: VoiceChannel,
     member: GuildMember,
@@ -76,6 +89,40 @@ export class TempVoiceService {
     await this.assignChannelOwner(channel, member);
 
     return "claimed";
+  }
+
+  async transferChannelOwner(
+    channel: VoiceChannel,
+    currentMember: GuildMember,
+    targetMember: GuildMember,
+  ): Promise<ChannelTransferResult> {
+    if (!this.canManageChannel(currentMember, channel)) {
+      return "not-allowed";
+    }
+
+    if (currentMember.id === targetMember.id) {
+      return "same-member";
+    }
+
+    if (targetMember.user.bot) {
+      return "target-is-bot";
+    }
+
+    if (!channel.members.has(targetMember.id)) {
+      return "target-not-in-channel";
+    }
+
+    const ownerIds = this.getChannelOwnerIds(channel).filter(
+      (ownerId) => ownerId !== targetMember.id,
+    );
+
+    await Promise.all(
+      ownerIds.map((ownerId) => this.removeChannelOwner(channel, ownerId)),
+    );
+
+    await this.assignChannelOwner(channel, targetMember);
+
+    return "transferred";
   }
 
   async renameChannel(channel: VoiceChannel, name: string) {

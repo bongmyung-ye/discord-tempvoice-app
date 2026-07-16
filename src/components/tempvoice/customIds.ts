@@ -26,6 +26,10 @@ export const tempVoiceTextInputCustomId = {
   userLimit: "tempvoice:input:user-limit",
 } as const;
 
+export const tempVoiceSelectMenuCustomId = {
+  transferOwner: "tempvoice:select:transfer-owner",
+} as const;
+
 export type TempVoiceAction =
   (typeof tempVoiceCustomId)[keyof typeof tempVoiceCustomId];
 
