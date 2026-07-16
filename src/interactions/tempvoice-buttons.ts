@@ -51,7 +51,7 @@ function createUserLimitModal() {
     );
 }
 
-async function getManageableVoiceChannel(interaction: ButtonInteraction) {
+async function getCurrentVoiceChannel(interaction: ButtonInteraction) {
   if (!interaction.inCachedGuild()) {
     await interaction.reply({
       ephemeral: true,
@@ -70,7 +70,20 @@ async function getManageableVoiceChannel(interaction: ButtonInteraction) {
     return null;
   }
 
-  if (!tempVoiceService.canManageChannel(interaction.member, channel)) {
+  return {
+    member: interaction.member,
+    channel,
+  };
+}
+
+async function getManageableVoiceChannel(interaction: ButtonInteraction) {
+  const context = await getCurrentVoiceChannel(interaction);
+
+  if (!context) {
+    return null;
+  }
+
+  if (!tempVoiceService.canManageChannel(context.member, context.channel)) {
     await interaction.reply({
       ephemeral: true,
       content: "이 음성 채널을 관리할 권한이 없습니다.",
@@ -78,10 +91,7 @@ async function getManageableVoiceChannel(interaction: ButtonInteraction) {
     return null;
   }
 
-  return {
-    member: interaction.member,
-    channel,
-  };
+  return context;
 }
 
 async function handlePrivacyToggle(interaction: ButtonInteraction) {
@@ -107,6 +117,41 @@ async function handlePrivacyToggle(interaction: ButtonInteraction) {
   });
 }
 
+async function handleChannelClaim(interaction: ButtonInteraction) {
+  const context = await getCurrentVoiceChannel(interaction);
+
+  if (!context) {
+    return;
+  }
+
+  await interaction.deferReply({
+    ephemeral: true,
+  });
+
+  const result = await tempVoiceService.claimChannel(
+    context.channel,
+    context.member,
+  );
+
+  if (result === "already-owner") {
+    await interaction.editReply({
+      content: "이미 이 음성 채널의 소유자입니다.",
+    });
+    return;
+  }
+
+  if (result === "owner-present") {
+    await interaction.editReply({
+      content: "현재 소유자가 음성 채널에 있어 소유권을 가져올 수 없습니다.",
+    });
+    return;
+  }
+
+  await interaction.editReply({
+    content: "이 음성 채널의 소유권을 가져왔습니다.",
+  });
+}
+
 export async function handleTempVoiceButton(
   interaction: ButtonInteraction,
   action: TempVoiceAction,
@@ -123,6 +168,11 @@ export async function handleTempVoiceButton(
 
   if (action === tempVoiceCustomId.privacy) {
     await handlePrivacyToggle(interaction);
+    return;
+  }
+
+  if (action === tempVoiceCustomId.claim) {
+    await handleChannelClaim(interaction);
     return;
   }
 
