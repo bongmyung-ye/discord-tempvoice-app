@@ -5,12 +5,14 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  UserSelectMenuBuilder,
 } from "discord.js";
 import {
   TempVoiceAction,
   tempVoiceActionLabels,
   tempVoiceCustomId,
   tempVoiceModalCustomId,
+  tempVoiceSelectMenuCustomId,
   tempVoiceTextInputCustomId,
 } from "../components/tempvoice/customIds.js";
 import { tempVoiceService } from "../services/tempvoice.service.js";
@@ -49,6 +51,18 @@ function createUserLimitModal() {
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(userLimitInput),
     );
+}
+
+function createOwnerTransferRow() {
+  const userSelectMenu = new UserSelectMenuBuilder()
+    .setCustomId(tempVoiceSelectMenuCustomId.transferOwner)
+    .setPlaceholder("소유권을 이전할 사용자를 선택해 주세요.")
+    .setMinValues(1)
+    .setMaxValues(1);
+
+  return new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+    userSelectMenu,
+  );
 }
 
 async function getCurrentVoiceChannel(interaction: ButtonInteraction) {
@@ -152,6 +166,32 @@ async function handleChannelClaim(interaction: ButtonInteraction) {
   });
 }
 
+async function handleOwnerTransfer(interaction: ButtonInteraction) {
+  const context = await getManageableVoiceChannel(interaction);
+
+  if (!context) {
+    return;
+  }
+
+  const transferableMembers = context.channel.members.filter(
+    (member) => member.id !== context.member.id && !member.user.bot,
+  );
+
+  if (transferableMembers.size === 0) {
+    await interaction.reply({
+      ephemeral: true,
+      content: "현재 음성 채널에 소유권을 이전할 사용자가 없습니다.",
+    });
+    return;
+  }
+
+  await interaction.reply({
+    ephemeral: true,
+    content: "소유권을 이전할 사용자를 선택해 주세요.",
+    components: [createOwnerTransferRow()],
+  });
+}
+
 export async function handleTempVoiceButton(
   interaction: ButtonInteraction,
   action: TempVoiceAction,
@@ -173,6 +213,11 @@ export async function handleTempVoiceButton(
 
   if (action === tempVoiceCustomId.claim) {
     await handleChannelClaim(interaction);
+    return;
+  }
+
+  if (action === tempVoiceCustomId.transfer) {
+    await handleOwnerTransfer(interaction);
     return;
   }
 
