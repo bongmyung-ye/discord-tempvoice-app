@@ -30,8 +30,49 @@ export const tempVoiceSelectMenuCustomId = {
   transferOwner: "tempvoice:select:transfer-owner",
 } as const;
 
+export const tempVoiceDeleteCustomIdPrefix = {
+  confirm: "tempvoice:delete-confirm:",
+  cancel: "tempvoice:delete-cancel:",
+} as const;
+
 export type TempVoiceAction =
   (typeof tempVoiceCustomId)[keyof typeof tempVoiceCustomId];
+
+export type TempVoiceDeleteAction =
+  keyof typeof tempVoiceDeleteCustomIdPrefix;
+
+export function createTempVoiceDeleteCustomId(
+  action: TempVoiceDeleteAction,
+  channelId: string,
+) {
+  return `${tempVoiceDeleteCustomIdPrefix[action]}${channelId}`;
+}
+
+export function parseTempVoiceDeleteCustomId(customId: string) {
+  const action = (
+    Object.keys(
+      tempVoiceDeleteCustomIdPrefix,
+    ) as TempVoiceDeleteAction[]
+  ).find((key) =>
+    customId.startsWith(tempVoiceDeleteCustomIdPrefix[key]),
+  );
+
+  if (!action) {
+    return null;
+  }
+
+  const prefix = tempVoiceDeleteCustomIdPrefix[action];
+  const channelId = customId.slice(prefix.length);
+
+  if (!/^\d{17,20}$/.test(channelId)) {
+    return null;
+  }
+
+  return {
+    action,
+    channelId,
+  };
+}
 
 export const tempVoiceActionLabels: Record<TempVoiceAction, string> = {
   [tempVoiceCustomId.rename]: "채널 이름 변경",

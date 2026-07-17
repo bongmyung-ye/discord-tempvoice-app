@@ -1,6 +1,8 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
   ButtonInteraction,
+  ButtonStyle,
   ChannelType,
   ModalBuilder,
   TextInputBuilder,
@@ -8,6 +10,7 @@ import {
   UserSelectMenuBuilder,
 } from "discord.js";
 import {
+  createTempVoiceDeleteCustomId,
   TempVoiceAction,
   tempVoiceActionLabels,
   tempVoiceCustomId,
@@ -62,6 +65,23 @@ function createOwnerTransferRow() {
 
   return new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
     userSelectMenu,
+  );
+}
+
+function createDeleteConfirmationRow(channelId: string) {
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(createTempVoiceDeleteCustomId("confirm", channelId))
+    .setLabel("삭제")
+    .setStyle(ButtonStyle.Danger);
+
+  const cancelButton = new ButtonBuilder()
+    .setCustomId(createTempVoiceDeleteCustomId("cancel", channelId))
+    .setLabel("취소")
+    .setStyle(ButtonStyle.Secondary);
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    confirmButton,
+    cancelButton,
   );
 }
 
@@ -192,6 +212,23 @@ async function handleOwnerTransfer(interaction: ButtonInteraction) {
   });
 }
 
+async function handleChannelDeleteRequest(interaction: ButtonInteraction) {
+  const context = await getManageableVoiceChannel(interaction);
+
+  if (!context) {
+    return;
+  }
+
+  await interaction.reply({
+    ephemeral: true,
+    content: [
+      `정말 ${context.channel} 채널을 삭제할까요?`,
+      "삭제하면 채널에 접속한 사용자의 음성 연결이 종료되며 되돌릴 수 없습니다.",
+    ].join("\n"),
+    components: [createDeleteConfirmationRow(context.channel.id)],
+  });
+}
+
 export async function handleTempVoiceButton(
   interaction: ButtonInteraction,
   action: TempVoiceAction,
@@ -218,6 +255,11 @@ export async function handleTempVoiceButton(
 
   if (action === tempVoiceCustomId.transfer) {
     await handleOwnerTransfer(interaction);
+    return;
+  }
+
+  if (action === tempVoiceCustomId.delete) {
+    await handleChannelDeleteRequest(interaction);
     return;
   }
 

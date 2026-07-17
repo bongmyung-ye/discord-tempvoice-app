@@ -140,6 +140,12 @@ export class TempVoiceService {
     await channel.setUserLimit(safeLimit);
   }
 
+  async deleteChannel(channel: VoiceChannel) {
+    await channel.delete(
+      "TempVoice 채널 소유자가 삭제를 최종 확인했습니다.",
+    );
+  }
+
   async togglePrivacy(channel: VoiceChannel, member: GuildMember) {
     const everyoneRole = channel.guild.roles.everyone;
     const everyoneOverwrite =
